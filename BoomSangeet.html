@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>BoomSangeet</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- Material Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        /* Existing styles remain unchanged */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: #f5f5f5;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: #3f51b5;
+            color: white;
+            padding: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+
+        .player-container {
+            flex: 1;
+            padding: 1rem;
+            max-width: 600px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 1rem;
+        }
+
+        .song-title {
+            font-size: 1.2rem;
+            color: #333;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            text-align: center;
+            margin: 1rem 0;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            margin: 2rem 0;
+            flex-wrap: wrap;
+        }
+
+        .button {
+            background: #3f51b5;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 56px;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            transition: all 0.3s;
+        }
+
+        .button:active {
+            transform: scale(0.95);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+
+        .button.secondary {
+            background: #ff4081;
+        }
+
+        .progress-container {
+            width: 100%;
+            height: 4px;
+            background: #ddd;
+            border-radius: 2px;
+            margin: 2rem 0;
+            cursor: pointer;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: #3f51b5;
+            border-radius: 2px;
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+
+        .time-display {
+            display: flex;
+            justify-content: space-between;
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .volume-controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+
+        .volume-slider {
+            flex: 1;
+            height: 4px;
+            -webkit-appearance: none;
+            background: #ddd;
+            border-radius: 2px;
+        }
+
+        .volume-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #3f51b5;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .button.small {
+            width: 40px;
+            height: 40px;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .file-input-label {
+            display: block;
+            background: #3f51b5;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 24px;
+            text-align: center;
+            cursor: pointer;
+            margin: 1rem 0;
+            transition: background 0.3s;
+        }
+
+        @media (max-width: 480px) {
+            .player-container {
+                padding: 1rem;
+            }
+            
+            .button {
+                width: 48px;
+                height: 48px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>BoomSangeet</h1>
+    </div>
+
+    <div class="player-container">
+        <label class="file-input-label">
+            <input type="file" id="fileInput" accept=".mp3" multiple>
+            Choose Music Files
+        </label>
+
+        <div class="card">
+            <div class="song-title" id="songTitle">No song selected</div>
+
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+
+            <div class="time-display">
+                <span id="currentTime">0:00</span>
+                <span id="duration">0:00</span>
+            </div>
+
+            <div class="volume-controls">
+                <button class="button small" id="muteButton" onclick="toggleMute()">
+                    <i class="material-icons">volume_up</i>
+                </button>
+                <input type="range" id="volumeSlider" class="volume-slider" min="0" max="1" step="0.1" value="1">
+            </div>
+
+            <div class="controls">
+                <button class="button" onclick="prevTrack()">
+                    <i class="material-icons">skip_previous</i>
+                </button>
+                <button class="button" onclick="play()" id="playButton">
+                    <i class="material-icons">play_arrow</i>
+                </button>
+                <button class="button" onclick="nextTrack()">
+                    <i class="material-icons">skip_next</i>
+                </button>
+                <button class="button secondary" onclick="resume()">
+                    <i class="material-icons">replay</i>
+                </button>
+                <button class="button secondary" onclick="stop()">
+                    <i class="material-icons">stop</i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentAudio = null;
+        let isPlaying = false;
+        let tracks = [];
+        let currentTrackIndex = -1;
+
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const files = e.target.files;
+            if (files.length > 0) {
+                tracks = Array.from(files);
+                currentTrackIndex = 0;
+                loadTrack(currentTrackIndex);
+            }
+        });
+
+        function loadTrack(index) {
+            if (index < 0 || index >= tracks.length) return;
+            
+            if (currentAudio) {
+                currentAudio.pause();
+                isPlaying = false;
+                document.getElementById('playButton').innerHTML = '<i class="material-icons">play_arrow</i>';
+            }
+            
+            const file = tracks[index];
+            currentAudio = new Audio(URL.createObjectURL(file));
+            document.getElementById('songTitle').textContent = `${index + 1}/${tracks.length} - ${file.name}`;
+            
+            currentAudio.volume = document.getElementById('volumeSlider').value;
+            currentAudio.muted = document.getElementById('muteButton').classList.contains('muted');
+
+            currentAudio.addEventListener('loadedmetadata', () => {
+                document.getElementById('duration').textContent = formatTime(currentAudio.duration);
+            });
+
+            currentAudio.addEventListener('timeupdate', updateProgress);
+            
+            currentAudio.addEventListener('play', () => {
+                isPlaying = true;
+                document.getElementById('playButton').innerHTML = '<i class="material-icons">pause</i>';
+            });
+
+            currentAudio.addEventListener('pause', () => {
+                isPlaying = false;
+                document.getElementById('playButton').innerHTML = '<i class="material-icons">play_arrow</i>';
+            });
+
+            currentAudio.addEventListener('ended', nextTrack);
+
+            document.getElementById('progressContainer').addEventListener('click', seek);
+        }
+
+        document.getElementById('volumeSlider').addEventListener('input', function(e) {
+            if (currentAudio) {
+                currentAudio.volume = e.target.value;
+                if (currentAudio.muted && e.target.value > 0) {
+                    toggleMute();
+                }
+            }
+        });
+
+        function toggleMute() {
+            if (!currentAudio) return;
+            currentAudio.muted = !currentAudio.muted;
+            const muteButton = document.getElementById('muteButton');
+            const icon = muteButton.querySelector('i');
+            icon.textContent = currentAudio.muted ? 'volume_off' : 'volume_up';
+            muteButton.classList.toggle('muted', currentAudio.muted);
+        }
+
+        function play() {
+            if (!currentAudio) {
+                alert('Please select music files first!');
+                return;
+            }
+            
+            if (isPlaying) {
+                currentAudio.pause();
+            } else {
+                currentAudio.play();
+            }
+        }
+
+        function resume() {
+            if (currentAudio) {
+                currentAudio.currentTime = 0;
+                currentAudio.play();
+            }
+        }
+
+        function stop() {
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio.currentTime = 0;
+                updateProgress();
+                isPlaying = false;
+                document.getElementById('playButton').innerHTML = '<i class="material-icons">play_arrow</i>';
+            }
+        }
+
+        function prevTrack() {
+            if (tracks.length === 0) return;
+            const wasPlaying = isPlaying;
+            currentTrackIndex = (currentTrackIndex - 1 + tracks.length) % tracks.length;
+            loadTrack(currentTrackIndex);
+            if (wasPlaying) currentAudio.play();
+        }
+
+        function nextTrack() {
+            if (tracks.length === 0) return;
+            const wasPlaying = isPlaying;
+            currentTrackIndex = (currentTrackIndex + 1) % tracks.length;
+            loadTrack(currentTrackIndex);
+            if (wasPlaying) currentAudio.play();
+        }
+
+        function updateProgress() {
+            if (!currentAudio) return;
+            const progress = (currentAudio.currentTime / currentAudio.duration) * 100;
+            document.getElementById('progressBar').style.width = `${progress}%`;
+            document.getElementById('currentTime').textContent = formatTime(currentAudio.currentTime);
+        }
+
+        function formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            seconds = Math.floor(seconds % 60);
+            return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        function seek(e) {
+            if (currentAudio) {
+                const rect = e.target.getBoundingClientRect();
+                const pos = (e.clientX - rect.left) / rect.width;
+                currentAudio.currentTime = pos * currentAudio.duration;
+            }
+        }
+    </script>
+</body>
+</html>
