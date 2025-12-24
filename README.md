@@ -1,2 +1,2 @@
 ###BOOM INCORPORATIVE
-*Boom Inc."
+*Boom Inc.*
